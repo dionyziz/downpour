@@ -1,3 +1,5 @@
+import utilities
+
 def decode( data ):
     def decode_one( data ):
         if data[ 0 ] == 'i':
@@ -36,7 +38,7 @@ def encode( data ):
     if type( data ) is list:
         return 'l' + ''.join( map( encode, data ) ) + 'e'
     if type( data ) is dict:
-        flattened = [ item for sublist in data.items() for item in sublist ]
+        flattened = utilities.flatten( data.items() )
         encoded = map( encode, flattened )
         joined = ''.join( encoded )
         return 'd' + joined + 'e'

@@ -1,6 +1,7 @@
 import bencoding
 import os 
 import utilities
+import datetime
 
 class DotTorrent:
     filename = ''
@@ -33,5 +34,12 @@ class DotTorrent:
         if 'announce-list' in metainfo:
             # multiple trackers
             self.trackerURLs |= set( utilities.flatten( metainfo[ 'announce-list' ] ) )
+        if 'created by' in metainfo:
+            self.createdBy = metainfo[ 'created by' ]
+        if 'comment' in metainfo:
+            self.comment = metainfo[ 'comment' ]
+        if 'encoding' in metainfo:
+            self.encoding = metainfo[ 'encoding' ]
+        if 'creation date' in metainfo:
+            self.creationDate = datetime.datetime.fromtimestamp( metainfo[ 'creation date' ] )
 
-print( DotTorrent( 'example.torrent' ).trackerURLs )
