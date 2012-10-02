@@ -1,5 +1,6 @@
 from dottorrent import DotTorrent
 from tracker import Tracker
+from peer import Peer
 import log
 import random
 import utilities
@@ -10,31 +11,6 @@ class Piece:
 
 class Block:
     pass
-
-# one of our remote peers to whom we can upload or download from
-class Peer:
-    IP = '0.0.0.0'
-    id = ''
-    port = 0
-    chocked = True
-    interested = False
-    connected = False
-    clientName = 'Unknown'
-    clientVersion = ''
-    has = []
-    local = True
-
-    def __generateId( self ):
-        self.id = "".join( map( chr, [ random.randint( 0, 255 ) for i in range( 0, 20 ) ] ) )
-    def __init__( self, ip = None, port = None ):
-        if ip is None:
-            self.local = True
-            self.__generateId()
-        else:
-            self.local = False
-            self.ip = ip
-        if port is not None:
-            self.port = port
 
 # a torrent download
 class Torrent:
@@ -100,17 +76,16 @@ class Torrent:
         while not trackerFound:
             self.tracker = random.choice( self.trackers )
             log.info( 'Using tracker: ' + self.tracker.URL )
-            log.info( 'Made a tracker announce request' )
+            log.info( 'Making tracker announce request' )
             try:
                 self.tracker.announceRequest()
-
-                log.info( 'Seeders: %i' % self.tracker.seedersCount )
-                log.info( 'Leechers: %i' % self.tracker.leechersCount )
                 trackerFound = True
             except TrackerTimeoutException:
                 log.warning( 'Tracker request timed out.' )
             except TrackerException:
                 log.warning( 'Tracker error.' )
+        log.info( 'Seeders: %i' % self.tracker.seedersCount )
+        log.info( 'Leechers: %i' % self.tracker.leechersCount )
     def beginDownload(): 
         pass
 

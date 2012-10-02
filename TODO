@@ -1,0 +1,4 @@
+* Add support for compact format in trackers
+* UDP protocol support for trackers
+* Tracker request timeout (with the ability to move to another tracker)
+* Add md5 checking in individual files if checksum is present

@@ -98,7 +98,7 @@ class Tracker:
         self.supported = True
         pos = self.URLParse.path.rindex( '/' )
         
-        lastPart = self.announceRequestURI[ ( pos + 1 ): ]
+        lastPart = self.URLParse.path[ ( pos + 1 ): ]
         if lastPart.find( 'announce' ) == 0:
             self.scrapeRequestURI = 'scrape' + lastPart.split( 'announce', 2 )[ 1 ]
             self.scrapeSupport = True
