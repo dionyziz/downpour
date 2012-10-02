@@ -93,7 +93,3 @@ def encode( data ):
         encoded = map( encode, flattened )
         joined = ''.join( encoded )
         return 'd' + joined + 'e'
-
-encoded = encode( [ { 'hello': 'world', 'goodbye': 'earth' }, [ 5, [ '9' ], 5 ], '35' ] )
-print( encoded )
-print( decode( encoded ) )
