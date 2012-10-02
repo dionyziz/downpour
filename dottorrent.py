@@ -2,6 +2,7 @@ import bencoding
 import os 
 import utilities
 import datetime
+import log
 
 class DotTorrent:
     filename = ''
@@ -15,14 +16,20 @@ class DotTorrent:
     pieceLength = 0
     pieces = {}
     private = 0
+    valid = False
 
     def __init__( self, filename ):
         self.filename = filename
-        self.byteSize = os.path.getsize( filename )
-        f = open( filename, 'r' )
-        data = f.read()
+        try:
+            self.byteSize = os.path.getsize( filename )
+            f = open( filename, 'r' )
+            data = f.read()
+        except:
+            log.error( 'Could not open torrent file "%s". File does not exist or is not readable.' % filename )
+            return
         metainfo = self.__parse( data )
         self.__populate( metainfo )
+        self.valid = True
     def __parse( self, data ):
         return bencoding.decode( data )
     def __populate( self, metainfo ):
@@ -42,4 +49,3 @@ class DotTorrent:
             self.encoding = metainfo[ 'encoding' ]
         if 'creation date' in metainfo:
             self.creationDate = datetime.datetime.fromtimestamp( metainfo[ 'creation date' ] )
-

@@ -1,34 +1,85 @@
 import utilities
 
+class Decoder:
+    offset = 0
+    beginCallback = None
+    endCallback = None
+
+    def __begin( self, what, offset ):
+        if self.beginCallback is not None:
+            self.beginCallback( what, offset )
+    def __end( self, what, offset, value ):
+        if self.endCallback is not None:
+            self.endCallback( what, offset, value )
+    def setCallback( self, begin, end ):
+        self.beginCallback = begin
+        self.endCallback = end
+    def decode( self, data ):
+        self.offset = 0
+        def decode_one( data ):
+            if data[ 0 ] == 'i':
+                # data is an integer
+                self.__begin( 'integer', self.offset )
+                self.offset += 1
+                data = data[ 1: ]
+                pos = data.index( 'e' )
+                value = int( data[ 0:pos ] )
+                self.offset += pos + 1
+                data = data[ ( pos + 1 ): ]
+                self.__end( 'integer', self.offset, value )
+                return ( value, data )
+            if data[ 0 ] == 'l':
+                # data is a list
+                self.__begin( 'list', self.offset )
+                self.offset += 1
+                data = data[ 1: ]
+                value = []
+                while data[ 0 ] != 'e':
+                    ( item, data ) = decode_one( data )
+                    value.append( item )
+                self.offset += 1
+                data = data[ 1: ]
+                self.__end( 'list', self.offset, value )
+                return ( value, data )
+            if data[ 0 ] == 'd':
+                # data is a dictionary
+                self.__begin( 'dictionary', self.offset )
+                self.offset += 1
+                data = data[ 1: ]
+                d = {}
+                while data[ 0 ] != 'e':
+                    self.__begin( 'key', self.offset )
+                    ( key, data ) = decode_one( data )
+                    self.__end( 'key', self.offset, key )
+                    self.__begin( 'value', self.offset )
+                    ( value, data ) = decode_one( data )
+                    self.__end( 'value', self.offset, value )
+                    d[ key ] = value
+                self.offset += 1
+                data = data[ 1: ]
+                self.__end( 'dictionary', self.offset, d ) 
+                return ( d, data )
+            # default case: data is a string
+            self.__begin( 'string', self.offset )
+            pos = data.index( ':' )
+            length = int( data[ :pos ] )
+            self.offset += pos + 1
+            data = data[ ( pos + 1 ): ]
+            value = data[ 0:length ]
+            self.offset += length
+            data = data[ length: ]
+            self.__end( 'string', self.offset, value )
+            return ( value, data )
+        return decode_one( data )[ 0 ]
+
 def decode( data ):
-    def decode_one( data ):
-        if data[ 0 ] == 'i':
-            # data is an integer
-            pos = data.index( 'e' )
-            return ( int( data[ 1:pos ] ), data[ ( pos + 1 ): ] )
-        if data[ 0 ] == 'l':
-            # data is a list
-            data = data[ 1: ]
-            l = []
-            while data[ 0 ] != 'e':
-                ( item, data ) = decode_one( data )
-                l.append( item )
-            return ( l, data[ 1: ] )
-        if data[ 0 ] == 'd':
-            # data is a dictionary
-            data = data[ 1: ]
-            d = {}
-            while data[ 0 ] != 'e':
-                ( key, data ) = decode_one( data )
-                ( value, data ) = decode_one( data )
-                d[ key ] = value
-            return ( d, data[ 1: ] )
-        # default case: data is a string
-        pos = data.index( ':' )
-        length = int( data[ 0:pos ] )
-        data = data[ ( pos + 1 ): ]
-        return ( data[ 0:length ], data[ length: ] )
-    return decode_one( data )[ 0 ]
+    # def begin( what, offset ):
+    #     print( "Starting %s at %i." % ( what, offset ) )
+    # def end( what, offset, value ):
+    #     print( "Ending %s with value '%s' at %i." % ( what, value, offset ) )
+    decoder = Decoder()
+    # decoder.setCallback( begin, end )
+    return decoder.decode( data )
 
 def encode( data ):
     if type( data ) is str:
@@ -42,3 +93,7 @@ def encode( data ):
         encoded = map( encode, flattened )
         joined = ''.join( encoded )
         return 'd' + joined + 'e'
+
+encoded = encode( [ { 'hello': 'world', 'goodbye': 'earth' }, [ 5, [ '9' ], 5 ], '35' ] )
+print( encoded )
+print( decode( encoded ) )

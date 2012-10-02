@@ -20,6 +20,9 @@ class Peer:
     clientVersion = ''
     has = []
 
+    def __init__( self ):
+        pass
+
 class File:
     byteSize = 0
     path = ''
@@ -27,21 +30,37 @@ class File:
 
 class Torrent:
     trackers = []
-    seedCount = 0
-    peerCount = 0
+    tracker = None
+    seedersCount = 0
+    leechersCount = 0
     files = []
+    peers = []
+    me = Peer()
 
     def __init__( self, torrentFileName ):
-        example = DotTorrent( torrentFileName )
+        dotTorrent = DotTorrent( torrentFileName )
+        if not dotTorrent.valid:
+            log.error( 'No torrent files found. Bailing out.' )
+            return
+
         hasTrackers = False
-        for url in example.trackerURLs:
+        for url in dotTorrent.trackerURLs:
             tracker = Tracker( url )
             if tracker.supported:
                 self.trackers.append( tracker )
                 hasTrackers = True
+        log.info( 'Found %i supported trackers: ' % ( len( self.trackers ) ) )
+        for tracker in self.trackers:
+            log.info( tracker.URL )
+
         if not hasTrackers:
             log.error( 'No supported trackers found for torrent. Aborting.' )
+            return
+
+        self.tracker = self.trackers[ 0 ]
+        log.info( 'Using tracker: ' + self.tracker.URL )
+        self.tracker.request()
     def beginDownload(): 
         pass
 
-Torrent( 'example.torrent' )
+Torrent( 'example2.torrent' )
