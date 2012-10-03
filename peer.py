@@ -54,7 +54,7 @@ class Peer:
         self.__sendString( payload )
         pass
     def __sendHandshake( self ):
-        log.info( 'Sending handshake to peer %s:%i...' % ( self.ip, self.port ) )
+        self.__beginSend( 'handshake' )
         pstr = 'BitTorrent protocol'
         pstrlen = len( pstr )
         self.__sendByte( pstrlen )
@@ -63,7 +63,7 @@ class Peer:
         infoHash = self.torrent.dotTorrent.infoHash
         self.__sendString( infoHash )
         self.__sendString( self.id )
-        log.info( 'Handshake sent to peer %s:%i.' % ( self.ip, self.port ) )
+        self.__finishSend()
         pass
     def __sendKeepAlive( self ):
         self.__beginSend( 'keep-alive' )
@@ -147,9 +147,78 @@ class Peer:
     def __handleCancel( self ):
         pass
     def __handleIncomingBytes( self, bytes ):
+        # some bytes have arrived
+        # each time this function is called, either it returns immediately if no new messages
+        # have yet (fully) arrived,
+        # or, if there is some new message, it removes that message from the buffer, parses it,
+        # and calls the appropriate handlers
         self.__buffer += bytes
-        # TODO: parse and call appropriate handler
-        pass
+        if len( self.__buffer ) < 4:
+            # we still haven't received the length of the message
+            # wait for more bytes
+            return
+        # get the length of the message
+        length = struct.unpack( '!I', self.__buffer[ :4 ] )
+        # length is the length of the following message
+        # check if we have yet received all the data promised for the message
+        if len( self.__buffer ) < 4 + length:
+            # we still haven't received the full message
+            # wait for more bytes
+            return
+        # remove the length from the buffer
+        self.__buffer = self.__buffer[ 4: ]
+        if length == 0:
+            # 0-length message (keep-alive), so we're done
+            self.__handleTorrentMessage( None, None, 0 )
+            return
+        # get the messageId
+        messageId = ord( self.__buffer[ 0 ] )
+        # remove the messageId from the buffer
+        self.__buffer = self.__buffer[ 1: ]
+        # get the payload, which has length equal to the total length of the message
+        # minus 1 for the messageId byte
+        payload = self.__buffer[ :( length - 1 ) ]
+        self.__handleTorrentMessage( messageId, payload, length )
+        # remove the payload from the buffer
+        # call handler again to handle potentially multiple messages received simultaniously
+        self.__handleIncomingBytes( '' )
+    def __handleTorrentMessage( self, messageId, payload, length = None ):
+        if length == 0:
+            # 0-length message is a keep-alive
+            self.__handleKeepAlive()
+            return
+        if messageId == 0:
+            assert( length == 1 )
+            self.__handleChoke()
+            return
+        if messageId == 1:
+            assert( length == 1 )
+            self.__handleUnchoke()
+            return
+        if messageId == 2:
+            assert( length == 1 )
+            self.__handleInterested()
+            return
+        if messageId == 3:
+            assert( length == 1 )
+            self.__handleUninterested()
+            return
+        if messageId == 4:
+            # TODO: have
+            return
+        if messageId == 5:
+            # TODO: bitfield
+            return
+        if messageId == 6:
+            # TODO: request
+            return
+        if messageId == 7:
+            # TODO: piece
+            return
+        if messageId == 8:
+            # TODO: cancel
+            return
+        log.warning( 'Unknown p2p wire protocol message id %i.' % messageId ) 
     def choke( self ):
         if self.__localChoke:
             return
