@@ -3,6 +3,7 @@ import utilities
 import urllib, urllib2
 import urlparse
 import bencoding
+import struct
 
 class TrackerException( Exception ):
     pass
@@ -27,6 +28,7 @@ class Tracker:
     leechersCount = 0
     torrent = None
     interval = 0
+    peers = [] # array of ( ip, port ) tuples
 
     __trackerId = None
 
@@ -37,12 +39,12 @@ class Tracker:
     def announceRequest( self ):
         getParams = {
             'info_hash': self.torrent.dotTorrent.infoHash,
-            'peer_id': self.torrent.me.id,
-            'port': 6885,
+            'peer_id': self.torrent.localPeer.id,
+            'port': 16885,
             'uploaded': self.torrent.bytesUploaded,
             'downloaded': self.torrent.bytesDownloaded,
             'left': self.torrent.bytesLeft,
-            # 'compact': 0,
+            'compact': 1,
             # 'no_peer_id': 0,
             'event': 'started',
             # 'ip': '127.0.0.1',
@@ -63,12 +65,14 @@ class Tracker:
             self.URLParse.fragment
         ) )
         log.info( 'Requesting announce: %s' % ( url ) )
+        f = urllib2.urlopen( url, None, self.HTTP_TIMEOUT )
         try:
-            f = urllib2.urlopen( url, None, self.HTTP_TIMEOUT )
-        except urllib2.HTTPError:
+            pass
+        except urllib2.HTTPError as e:
+            log.warning( 'Tracker HTTP error ' + str( e.code ) )
             raise TrackerException
         except urllib2.URLError:
-            raise TrackerTimeoutExeption
+            raise TrackerTimeoutException
 
         self.__parseAnnounceResponse( f.read() )
     def __parseAnnounceResponse( self, response ):
@@ -82,12 +86,20 @@ class Tracker:
         self.leechersCount = response[ 'incomplete' ]
         if 'tracker id' in response:
             self.__trackerId = response[ 'tracker id' ]
+        self.__parsePeers( response[ 'peers' ] )
+    def __parsePeers( self, peers ):
+        assert( len( peers ) % 6 == 0 )
+
+        for i in range( 0, len( peers ), 6 ):
+            self.__parsePeer( peers[ i:( i + 6 ) ] )
+    def __parsePeer( self, peer ):
+        ip = [ 0, 0, 0, 0 ]
+        ( ip[ 0 ], ip[ 1 ], ip[ 2 ], ip[ 3 ] ) = struct.unpack( '!BBBB', peer[ :4 ] )
+        port = struct.unpack( '!H', peer[ 4: ] )[ 0 ]
+        ip = '.'.join( map( str, ip ) )
+        self.peers.append( ( ip, port ) )
     def __protocolSupported( self, protocol ):
-        return protocol == 'http'
-    def __protocolPort( self, protocol ):
-        if protocol == 'http':
-            return 80
-        raise NameError( 'Protocol "%s" is not supported.' % protocol )
+        return protocol == 'http' or protocol == 'https'
     def __parseURL( self, URL ):
         self.URLParse = urlparse.urlparse( URL )
 

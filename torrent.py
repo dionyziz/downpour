@@ -1,5 +1,5 @@
 from dottorrent import DotTorrent
-from tracker import Tracker
+import tracker
 from peer import Peer
 import log
 import random
@@ -22,7 +22,8 @@ class Torrent:
     leechersCount = 0
     files = []
     peers = []
-    me = Peer()
+    # a Peer object representing the local program
+    localPeer = None
     bytesLeft = 0
     bytesDownloaded = 0
     bytesUploaded = 0
@@ -30,6 +31,7 @@ class Torrent:
     dotTorrent = None
 
     def __init__( self, torrentFileName ):
+        self.localPeer = Peer( self )
         log.info( 'Loading torrent file "%s"' % torrentFileName )
         self.dotTorrent = DotTorrent( torrentFileName )
         log.info( 'Torrent "%s" loaded.' % self.dotTorrent.name )
@@ -44,7 +46,7 @@ class Torrent:
             log.info( '(Torrent creator comment: "%s")' % self.dotTorrent.comment )
 
         if len( self.dotTorrent.files ) == 1:
-            fiels = 'file'
+            files = 'file'
         else:
             files = 'files'
 
@@ -60,13 +62,13 @@ class Torrent:
 
         hasTrackers = False
         for url in self.dotTorrent.trackerURLs:
-            tracker = Tracker( url, self )
-            if tracker.supported:
-                self.trackers.append( tracker )
+            t = tracker.Tracker( url, self )
+            if t.supported:
+                self.trackers.append( t )
                 hasTrackers = True
         log.info( 'Found %i supported trackers: ' % ( len( self.trackers ) ) )
-        for tracker in self.trackers:
-            log.info( tracker.URL )
+        for t in self.trackers:
+            log.info( t.URL )
 
         if not hasTrackers:
             log.error( 'No supported trackers found for torrent. Aborting.' )
@@ -80,13 +82,20 @@ class Torrent:
             try:
                 self.tracker.announceRequest()
                 trackerFound = True
-            except TrackerTimeoutException:
+            except tracker.TrackerTimeoutException:
                 log.warning( 'Tracker request timed out.' )
-            except TrackerException:
+            except tracker.TrackerException:
                 log.warning( 'Tracker error.' )
         log.info( 'Seeders: %i' % self.tracker.seedersCount )
         log.info( 'Leechers: %i' % self.tracker.leechersCount )
+        log.info( 'Found %i peers: ' % len( self.tracker.peers ) )
+        for ( ip, port ) in self.tracker.peers:
+            log.info( ' - %s:%i' % ( ip, port ) )
+            self.peers.append( Peer( self, ip, port ) )
+
+        for peer in self.peers:
+            peer.connect()
     def beginDownload(): 
         pass
 
-Torrent( 'crysis.torrent' )
+Torrent( 'tails.torrent' )

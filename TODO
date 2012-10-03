@@ -1,4 +1,12 @@
-* Add support for compact format in trackers
+* Actually download/upload pieces/blocks and store them into files
+* Change everything to non-blocking and use select
+* Connect to multiple peers simultaniously
+* Validate downloaded pieces' checksum
+* Add support for non-compact format in trackers responses
 * UDP protocol support for trackers
-* Tracker request timeout (with the ability to move to another tracker)
 * Add md5 checking in individual files if checksum is present
+* Validate HTTPS certificates (is this affecting security?)
+* "port" message support on the peer wire protocol
+* uTP (UDP wire instead of TCP wire) support for the peer wire protocol
+* Multiple trackers at once
+* Multiple torrents
